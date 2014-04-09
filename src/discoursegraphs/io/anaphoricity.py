@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Author: Arne Neumann <arne-neumann@web.de>
+# Author: Arne Neumann <discoursegraphs.programming@arne.cl>
 
+import sys
 import os
 import re
 from itertools import chain
-import networkx
+from networkx import MultiDiGraph, write_gpickle
 
 # The words 'das' and 'es were annotatated in the Potsdam Commentary
 # Corpus (PCC). Annotation options: '/n' (nominal), '/a' (abstract),
@@ -20,10 +21,19 @@ ANNOTATION_TYPES = {'n': 'nominal',
                     'r': 'relative',
                     'p': 'pleonastic'}
 
-class AnaphoraDocumentGraph(networkx.MultiDiGraph):
+class AnaphoraDocumentGraph(MultiDiGraph):
     """
     represents a text in which abstract anaphora were annotated
     as a graph.
+
+    Attributes
+    ----------
+    tokens : list of int
+        a list of node IDs (int) which represent the tokens in the
+        order they occur in the text
+    root_node_name : str
+        name of the document root node ID
+        (default: 'anaphoricity:root_node')
     """
     def __init__(self, anaphora_filepath, name=None):
         """
@@ -56,26 +66,54 @@ class AnaphoraDocumentGraph(networkx.MultiDiGraph):
         # super calls __init__() of base class MultiDiGraph
         super(AnaphoraDocumentGraph, self).__init__()
         self.name = os.path.basename(anaphora_filepath)
-        root_node_name = 'anaphoricity:root_node'
-        self.add_node(root_node_name, layers={'anaphoricity'})
+        self.root_node_name = 'anaphoricity:root_node'
+        self.add_node(self.root_node_name, layers={'anaphoricity'})
+        self.tokens = []
 
         with open(anaphora_filepath, 'r') as anno_file:
             annotated_lines = anno_file.readlines()
-            annotated_tokens = list(chain.from_iterable(line.split()
+            tokens = list(chain.from_iterable(line.split()
                                         for line in annotated_lines))
-            for i, token in enumerate(annotated_tokens):
-                regex_match = ANNOTATED_ANAPHORA_REGEX.search(token)
-                if regex_match: # token is annotated
-                    unannotated_token = regex_match.group('token')
-                    annotation = regex_match.group('annotation')
-                    certainty = 1.0 if not regex_match.group('uncertain') else 0.5
-                    self.add_node(i, token=unannotated_token,
-                        annotation={'anaphoricity': ANNOTATION_TYPES[annotation],
-                            'certainty': certainty}, 
-                            layers={'anaphoricity', 'anaphoricity:token'})
-                else: # token is not annotated
-                    self.add_node(i, token=token,
-                        layers={'anaphoricity', 'anaphoricity:token'})
-                self.add_edge(root_node_name, i,
+            for i, token in enumerate(tokens):
+                self.__add_token_to_document(token, i)
+                self.tokens.append(i)
+
+    def __add_token_to_document(self, token, token_id):
+        """
+        adds a token to the document graph as a node with the given ID.
+
+        Parameters
+        ----------
+        token : str
+            the token to be added to the document graph
+        token_id : int
+            the node ID of the token to be added, which must not yet
+            exist in the document graph
+        """
+        regex_match = ANNOTATED_ANAPHORA_REGEX.search(token)
+        if regex_match: # token is annotated
+            unannotated_token = regex_match.group('token')
+            annotation = regex_match.group('annotation')
+            certainty = 1.0 if not regex_match.group('uncertain') else 0.5
+            self.add_node(token_id, token=unannotated_token,
+                annotation={'anaphoricity': ANNOTATION_TYPES[annotation],
+                    'certainty': certainty},
                     layers={'anaphoricity', 'anaphoricity:token'})
+        else: # token is not annotated
+            self.add_node(token_id, token=token,
+                layers={'anaphoricity', 'anaphoricity:token'})
+        self.add_edge(self.root_node_name, token_id,
+            layers={'anaphoricity', 'anaphoricity:token'})
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.stderr.write('Usage: {0} anaphoricity_input_file networkx_pickle_output_file\n'.format(sys.argv[0]))
+        sys.exit(1)
+    else:
+        anaphora_filepath = sys.argv[1]
+        pickle_filepath = sys.argv[2]
+        assert os.path.isfile(anaphora_filepath)
+        anaphora_docgraph = AnaphoraDocumentGraph(anaphora_filepath)
+        write_gpickle(anaphora_docgraph, pickle_filepath)
 
