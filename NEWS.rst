@@ -6,18 +6,22 @@
 News
 ====
 
-0.2a1
+0.1.1
 -----
 
-*Release date: UNRELEASED*
+*Release date: 25-Apr-2014*
 
-* Example news entry for the in-development version
+* small improvements
+* added usage examples to readme
+* discoursegraphs script now uses the commandline interface of the merging module
 
+0.1.0
+-----
 
-0.1
----
+*Release date: 24-Apr-2014*
 
-*Release date: 15-Mar-2010*
-
-* Example news entry for a released version
+* first public release
+* imports: RS3, TigerXML and an ad-hoc format for expletive annotation
+* merge these formats/files into a single multidigraph
+* generates simple dot/graphviz-based visualization
 

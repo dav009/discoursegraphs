@@ -11,12 +11,13 @@ README = open(os.path.join(here, 'README.rst')).read()
 NEWS = open(os.path.join(here, 'NEWS.rst')).read()
 
 
-version = '0.1.0'
+version = '0.1.1'
 
 install_requires = [
     # List your project dependencies here.
     # For more details, see:
     # http://packages.python.org/distribute/setuptools.html#declaring-dependencies
+    "lxml", "networkx", "pygraphviz"
 ]
 
 
@@ -38,14 +39,14 @@ setup(name='discoursegraphs',
     keywords='corpus linguistics nlp graph networkx annotation',
     author='Arne Neumann',
     author_email='discoursegraphs.programming@arne.cl',
-    url='',
-    license='Revised BSD License',
+    url='https://github.com/arne-cl/discoursegraphs',
+    license='3-Clause BSD License',
     packages=find_packages("src"),
     package_dir = {'': "src"},include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
     entry_points={
         'console_scripts':
-            ['discoursegraphs=discoursegraphs:main']
+            ['discoursegraphs=discoursegraphs.merging:merging_cli']
     }
 )
