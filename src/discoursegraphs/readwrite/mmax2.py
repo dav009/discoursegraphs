@@ -192,6 +192,9 @@ class MMAXDocumentGraph(DiscourseDocumentGraph):
             "Annotation file doesn't exist: {}".format(annotation_file)
         tree = etree.parse(annotation_file)
         root = tree.getroot()
+
+        #~ print "DEBUG: adding annotation {}:\n\n".format(annotation_file)
+        
         # avoids eml.org namespace handling
         for markable in root.iterchildren():
             markable_node_id = markable.attrib['id']
@@ -200,6 +203,10 @@ class MMAXDocumentGraph(DiscourseDocumentGraph):
                           layers={self.ns, self.ns+':markable'},
                           attr_dict=markable_attribs,
                           label=markable_node_id+':'+layer_name)
+
+            #~ print "\tDEBUG: markable '{0}' spans '{1}'".format(markable_node_id, markable.attrib['span'])
+            #~ print u"\tDEBUG: '{}'".format(span2text(self, markable.attrib['span']))
+
             for to_node_id in span2tokens(markable.attrib['span']):
                 # manually add to_node if it's not in the graph, yet
                 # cf. issue #39
@@ -217,6 +224,9 @@ class MMAXDocumentGraph(DiscourseDocumentGraph):
             if 'anaphor_antecedent' in markable.attrib \
             and markable.attrib['anaphor_antecedent'] != 'empty':
                 antecedent_pointer = markable.attrib['anaphor_antecedent']
+                
+                #~ print "\tDEBUG: antecedent pointer '{}'".format(antecedent_pointer)
+                
                 # mmax2 supports weird double antecedents,
                 # e.g. "markable_1000131;markable_1000132", cf. Issue #40
                 for antecedent in antecedent_pointer.split(';'):
@@ -235,10 +245,17 @@ class MMAXDocumentGraph(DiscourseDocumentGraph):
                     if antecedent_node_id not in self:
                         self.add_node(antecedent_node_id,
                                       layers={self.ns, self.ns+':markable'})
+
                     self.add_edge(markable_node_id, antecedent_node_id,
                                   layers={self.ns, self.ns+':markable'},
                                   edge_type=EdgeTypes.pointing_relation,
                                   label=self.ns+edge_label)
+
+                    #~ print "\t\tDEBUG: add pointing edge({0}, {1})".format(markable_node_id, antecedent_node_id)
+                    #~ from discoursegraphs import get_text # TODO: rm after debug
+                    #~ print "\t\tDEBUG: antecedent: '{}'".format(get_text(self, antecedent_node_id))
+
+            #~ print # TODO: rm after debug
 
     def get_annotation_type():
         """
@@ -283,6 +300,15 @@ def span2tokens(span_string):
             raise ValueError("Can't parse span '{}'".format(span_string))
     return tokens
 
+
+def span2text(docgraph, span_string):
+    """
+    converts a span of tokens (str, e.g. 'word_88..word_91') into a string
+    that contains the tokens itself.
+    """
+    token_node_ids = span2tokens(span_string)
+    return u' '.join(docgraph.node[tok_node_id][docgraph.ns+':token']
+                     for tok_node_id in token_node_ids)
 
 if __name__ == "__main__":
     generic_converter_cli(MMAXDocumentGraph,
