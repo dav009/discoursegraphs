@@ -13,7 +13,7 @@ import sys
 import argparse
 from networkx import write_dot
 
-from discoursegraphs.readwrite.tiger import TigerDocumentGraph
+from discoursegraphs import DiscourseDocumentGraph
 from discoursegraphs.util import create_dir
 
 
@@ -44,42 +44,50 @@ def merging_cli(debug=False):
 
     args = parser.parse_args(sys.argv[1:])
 
-    assert args.tiger_file, \
-        "You'll need to provide at least a TigerXML file."
+    input_files = [args.anaphoricity_file, args.conano_file, args.mmax_file,
+                   args.rst_file, args.tiger_file]
 
-    for filepath in (args.tiger_file, args.rst_file, args.anaphoricity_file,
-                     args.conano_file):
+    #~ assert args.tiger_file, \
+        #~ "You'll need to provide at least a TigerXML file."
+
+    for filepath in input_files:
         if filepath:  # if it was specified on the command line
             assert os.path.isfile(filepath), \
                 "File '{}' doesn't exist".format(filepath)
 
-    tiger_docgraph = TigerDocumentGraph(args.tiger_file)
+    #~ tiger_docgraph = TigerDocumentGraph(args.tiger_file)
+    discourse_graph = DiscourseDocumentGraph()
+
+    if args.tiger_file:
+        from discoursegraphs.readwrite import TigerDocumentGraph
+        tiger_docgraph = TigerDocumentGraph(args.tiger_file)
+        discourse_graph.merge_graphs(tiger_docgraph)
 
     if args.rst_file:
         from discoursegraphs.readwrite.rst import RSTGraph
         rst_graph = RSTGraph(args.rst_file)
-        tiger_docgraph.merge_graphs(rst_graph)
+        discourse_graph.merge_graphs(rst_graph)
 
     if args.anaphoricity_file:
         from discoursegraphs.readwrite import AnaphoraDocumentGraph
         anaphora_graph = AnaphoraDocumentGraph(args.anaphoricity_file)
-        tiger_docgraph.merge_graphs(anaphora_graph)
+        discourse_graph.merge_graphs(anaphora_graph)
         # the anaphora doc graph only contains trivial edges from its root
         # node.
         try:
-            tiger_docgraph.remove_node('anaphoricity:root_node')
+            discourse_graph.remove_node('anaphoricity:root_node')
         except:
             pass
 
     if args.conano_file:
         from discoursegraphs.readwrite import ConanoDocumentGraph
         conano_graph = ConanoDocumentGraph(args.conano_file)
-        tiger_docgraph.merge_graphs(conano_graph)
+        discourse_graph.merge_graphs(conano_graph)
 
     if args.mmax_file:
         from discoursegraphs.readwrite import MMAXDocumentGraph
         mmax_graph = MMAXDocumentGraph(args.mmax_file)
-        tiger_docgraph.merge_graphs(mmax_graph)
+        discourse_graph.merge_graphs(mmax_graph)
 
     if isinstance(args.output_file, str):  # if we're not piping to stdout ...
         path_to_output_file = os.path.dirname(args.output_file)
@@ -87,30 +95,30 @@ def merging_cli(debug=False):
             create_dir(path_to_output_file)
 
     if args.output_format == 'dot':
-        write_dot(tiger_docgraph, args.output_file)
+        write_dot(discourse_graph, args.output_file)
     elif args.output_format == 'pickle':
         import cPickle as pickle
         with open(args.output_file, 'wb') as pickle_file:
-            pickle.dump(tiger_docgraph, pickle_file)
+            pickle.dump(discourse_graph, pickle_file)
     elif args.output_format == 'geoff':
         from discoursegraphs.readwrite.neo4j import convert_to_geoff
-        args.output_file.write(convert_to_geoff(tiger_docgraph))
+        args.output_file.write(convert_to_geoff(discourse_graph))
         print ''
     elif args.output_format == 'neo4j':
         import requests
         from discoursegraphs.readwrite.neo4j import upload_to_neo4j
         try:
-            upload_to_neo4j(tiger_docgraph)
+            upload_to_neo4j(discourse_graph)
         except requests.exceptions.ConnectionError as e:
             sys.stderr.write(
                 ("Can't upload graph to Neo4j server. "
                  "Is it running?\n{}\n".format(e)))
     elif args.output_format == 'exmaralda':
         from discoursegraphs.readwrite.exmaralda import write_exb
-        write_exb(tiger_docgraph, args.output_file)
+        write_exb(discourse_graph, args.output_file)
     elif args.output_format == 'conll':
         from discoursegraphs.readwrite.conll import write_conll
-        write_conll(tiger_docgraph, args.output_file)
+        write_conll(discourse_graph, args.output_file)
 
     elif args.output_format == 'no-output':
         pass  # just testing if the merging works

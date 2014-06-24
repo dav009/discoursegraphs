@@ -516,28 +516,32 @@ class DiscourseDocumentGraph(MultiDiGraph):
         NOTE: This will only work if both graphs have exactly the same
         tokenization.
         """
-        # TODO: add 'tiger:token' attrib to Tiger importer
-        if self.ns == 'tiger':
-            local_tokens = self.get_tokens(token_attrib='word')
-        else:
-            local_tokens = self.get_tokens()
+        local_tokens = self.get_tokens()
 
-        remote_tokens = list(document_graph.get_tokens())
+        if local_tokens: # if this graph isn't still empty
+            # compare the tokenizations of both graphs
+            remote_tokens = list(document_graph.get_tokens())
 
-        remote2local = {}
-        for i, (local_tok_id, local_tok) in enumerate(local_tokens):
-            remote_tok_id, remote_tok = remote_tokens[i]
-            if local_tok != remote_tok:  # token mismatch
-                raise ValueError(
-                    u"Tokenization mismatch: {0} ({1}) vs. {2} ({3})\n"
-                    "\t{4} != {5}".format(
-                        self.name, self.ns, document_graph.name,
-                        document_graph.ns, local_tok,
-                        remote_tok).encode('utf-8'))
-            else:
-                remote2local[remote_tok_id] = local_tok_id
+            remote2local = {}
+            for i, (local_tok_id, local_tok) in enumerate(local_tokens):
+                remote_tok_id, remote_tok = remote_tokens[i]
+                if local_tok != remote_tok:  # token mismatch
+                    raise ValueError(
+                        u"Tokenization mismatch: {0} ({1}) vs. {2} ({3})\n"
+                        "\t{4} != {5}".format(
+                            self.name, self.ns, document_graph.name,
+                            document_graph.ns, local_tok,
+                            remote_tok).encode('utf-8'))
+                else:
+                    remote2local[remote_tok_id] = local_tok_id
 
-        relabel_nodes(document_graph, remote2local, copy=False)
+            # if both graphs have exactly the same tokenization, relabel
+            # the token nodes of the other graph to match the token nodes
+            # of this one
+            relabel_nodes(document_graph, remote2local, copy=False)
+
+        # add all nodes/edges from the other graph, regardless whether
+        # this graph is still empty or not
         self.add_nodes_from(document_graph.nodes(data=True))
         self.add_edges_from(document_graph.edges(data=True))
 
